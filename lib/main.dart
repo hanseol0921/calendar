@@ -217,12 +217,12 @@ Widget buildCell(DateTime day, bool hasImage, bool isToday) {
         backgroundColor: Colors.white,
         items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Calendar',
+            icon: Icon(Icons.calendar_month),
+            label: '홈',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.photo_library),
-            label: 'Gallery',
+            label: '갤러리',
           ),
         ],
         ),
