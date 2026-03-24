@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 void main() async {
   await initializeDateFormatting();
@@ -32,9 +34,7 @@ class _CalenadrPageState extends State<CalenadrPage> {
 );
 
 DateTime focusedDay = DateTime.now();
-Map<DateTime, bool> photoMap = {
-    DateTime(2026, 3, 23): true,
-    DateTime(2026, 3, 25): true,
+Map<DateTime, List<File>> photoMap = {
   };
 
 DateTime normalizeDate(DateTime day) {
@@ -43,30 +43,96 @@ DateTime normalizeDate(DateTime day) {
 
   // 👉 해당 날짜에 사진 있는지 확인
 bool hasPhoto(DateTime day) {
-  return photoMap[normalizeDate(day)] ?? false;
+  return photoMap[normalizeDate(day)]?.isNotEmpty ?? false;
+}
+List<File> getPhotos(DateTime day) {
+  return photoMap[normalizeDate(day)] ?? [];
+}
+
+final ImagePicker picker = ImagePicker();
+Future<void> pickImage(DateTime day) async {
+  final XFile? image = await picker.pickImage(
+    source: ImageSource.gallery);
+  if (image != null) {
+    setState((){
+      final key = normalizeDate(day);
+
+      // 👉 해당 날짜에 리스트 없으면 생성
+        if (photoMap[key] == null) {
+          photoMap[key] = [];
+        }
+
+      // 👉 선택한 이미지 File로 변환 후 저장
+        photoMap[key]!.add(File(image.path));
+      });
   }
+}
+void showPhotoOptions(DateTime day) {
+  // Show photo options for the selected day
+  showModalBottomSheet(
+    context: context,
+    builder: (context) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.add_a_photo),
+              title: Text('사진 추가'),
+              onTap: () {
+                Navigator.pop(context);
+                pickImage(day);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.close),
+              title: Text('사진 삭제'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                   photoMap[normalizeDate(day)] = [];
+                });
+              },
+            )
+          ],
+        )
+        );
+    }
+    );
+}
 
-
-
-Widget buildCell(DateTime day, bool hasImage, isToday) {
+Widget buildCell(DateTime day, bool hasImage, bool isToday) {
+  final photos = getPhotos(day);
   return Container(
     margin: EdgeInsets.zero,
     
     child: Stack(
       children: [
+        if (photos.isNotEmpty)
+          Positioned.fill(child: photos.length == 1
+              ? Image.file(
+                  photos[0],
+                  fit: BoxFit.cover,
+                )
+              : GridView.count(
+                    crossAxisCount: 1,
+                    physics: NeverScrollableScrollPhysics(),
+                    children: photos.take(4).map((file){
+                      return Image.file(
+                        file,
+                        fit: BoxFit.cover,
+                      );
+                    }).toList(),
+                    ),
+                   ),
         
-        if (hasImage)
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.blue,
-            ),
-          ),
+        
         if (isToday)
           Container(
             decoration: BoxDecoration(
-              border: Border.all(
+              border: Border .all(
                 color: Colors.yellow,
-                width: 2,
+                width: 1,
               ),
             ),
           ),
@@ -77,7 +143,7 @@ Widget buildCell(DateTime day, bool hasImage, isToday) {
               child: Text(
             '${day.day}',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 14,
               color: hasImage ? Colors.white : Colors.black,
             ),
             ),
@@ -92,7 +158,11 @@ Widget buildCell(DateTime day, bool hasImage, isToday) {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Caledar')),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: Text('Caledar')
+        ),
       body: TableCalendar(
         locale: 'ko_KR',
         firstDay: DateTime.utc(2023,05,30),
@@ -100,21 +170,20 @@ Widget buildCell(DateTime day, bool hasImage, isToday) {
         focusedDay:  focusedDay,
 
         rowHeight: 80,
+        daysOfWeekHeight: 40,
         calendarStyle: CalendarStyle(
           outsideDaysVisible: false,
-          tableBorder: TableBorder.all(
-            color: Colors.grey,
-            width: 1,
-          ),
         ),
-
         onDaySelected: (DateTime selectedDay, DateTime focusedDay) {
           // 선택된 날짜의 상태를 갱신합니다.	
           setState((){
             this.selectedDay = selectedDay;
             this.focusedDay = focusedDay;
           });
+          showPhotoOptions(selectedDay);
         },
+
+        
         selectedDayPredicate: (DateTime day) {
           // selectedDay 와 동일한 날짜의 모양을 바꿔줍니다.	
           return isSameDay(selectedDay, day);
@@ -144,6 +213,19 @@ Widget buildCell(DateTime day, bool hasImage, isToday) {
            )
                 
           ),
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.white,
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Calendar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.photo_library),
+            label: 'Gallery',
+          ),
+        ],
+        ),
        );
      
   }
