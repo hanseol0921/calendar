@@ -1,17 +1,20 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:practice/pages/calendar_page.dart';
 
 // =====================================================
 // 📸 사진 크게 보는 페이지
 // =====================================================
 class PhotoViewPage extends StatefulWidget {
-   final List<File> photos;
 
-   final VoidCallback onAddPhoto;
+  final Album album;
+
+  final VoidCallback onAddPhoto;
+   
 
     const PhotoViewPage({
       super.key,
-      required this.photos,
+      required this.album,
       required this.onAddPhoto,
    });
   
@@ -20,6 +23,7 @@ class PhotoViewPage extends StatefulWidget {
   @override
   State<PhotoViewPage> createState() => _PhotoViewPageState();
 }
+
 
 class _PhotoViewPageState extends State<PhotoViewPage> {
   @override
@@ -31,8 +35,11 @@ class _PhotoViewPageState extends State<PhotoViewPage> {
         actions:[
           IconButton(
             icon: Icon(Icons.add),
-            onPressed: widget.onAddPhoto,
-            )
+            onPressed: () {
+              widget.onAddPhoto();
+            },
+          ),
+            
         ],
         backgroundColor: Colors.white,
         iconTheme:
@@ -43,22 +50,37 @@ class _PhotoViewPageState extends State<PhotoViewPage> {
       // 📸 사진 슬라이드
       // =========================
       body: 
-      
-      PageView.builder(
-        itemCount: widget.photos.length,
-        itemBuilder: (context, index) {
-          return Center(
-            child: Image.file(
-              widget.photos[index],
-              fit: BoxFit.contain, // 👉 전체 보이게
+      Column(
+        children: [
+          Padding(
+            padding:EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.album.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                if(widget.album.memo.isNotEmpty)
+                 Text(widget.album.memo),
+              ],
             ),
-          );
-        },
-      ),
-    );
+            ),
+        
+      
+        Expanded(
+          child: PageView.builder(
+            itemCount: widget.album.images.length,
+            itemBuilder: (context, index) {
+              return Image.file(File(widget.album.images[index]), fit: BoxFit.contain,);
+            }
+            ),
+          ),
+          ]
+          )
+        );
+      }
+      
 
   }
-}
+
 
 
 

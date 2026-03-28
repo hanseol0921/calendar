@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:practice/pages/album_edit_page.dart';
+import 'package:practice/pages/album_list_page.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -10,6 +12,23 @@ class CalenadrPage extends StatefulWidget {
   @override
   State<CalenadrPage> createState() => _CalenadrPageState();
 }
+
+// =====================================================
+// 📁 앨범 데이터
+// =====================================================
+class Album {
+  String title; // 👉 앨범 이름
+  List<String> images; // 👉 일단 이미지 경로 (지금은 비어있어도 됨)
+  String memo;
+
+  Album({
+    required this.title,
+    required this.images,
+    this.memo = '',
+  });
+}
+
+Map<DateTime, List<Album>> albumMap = {};
 
 class _CalenadrPageState extends State<CalenadrPage> {
   DateTime selectedDay = DateTime(
@@ -27,40 +46,75 @@ DateTime normalizeDate(DateTime day) {
   }
 
   // 👉 해당 날짜에 사진 있는지 확인
-bool hasPhoto(DateTime day) {
-  return photoMap[normalizeDate(day)]?.isNotEmpty ?? false;
+  bool hasPhoto(DateTime day) {
+  return albumMap[normalizeDate(day)]?.isNotEmpty ?? false;
 }
+
 List<File> getPhotos(DateTime day) {
   return photoMap[normalizeDate(day)] ?? [];
 }
+List<Album> getAlbums(DateTime day) {
+  return albumMap[normalizeDate(day)] ?? [];
+}
+
+
+
 
 final ImagePicker picker = ImagePicker();
+
+
 Future<void> pickImage(DateTime day) async {
   final XFile? image = await picker.pickImage(
     source: ImageSource.gallery);
-  if (image != null) {
-    setState((){
-      final key = normalizeDate(day);
+      if (image == null) return;
+       // 👉 이미지 선택 취소
+       
+      
+      final path = image.path;
+      final newAlbum = Album(
+        title: '',
+        images: [path],
+     );
+     // ⭐ 2. 설정창 이동
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AlbumEditPage(album: newAlbum),
+       ),
+     );
+      setState(() {
+        albumMap[normalizeDate(day)] ??= [];
+          albumMap[normalizeDate(day)]!.add(newAlbum);
+});
+    }
+  
 
-      // 👉 해당 날짜에 리스트 없으면 생성
-        if (photoMap[key] == null) {
-          photoMap[key] = [];
-        }
+Future<void> addImageToAlbum(Album album) async {
+  final XFile? image = await picker.pickImage(
+    source: ImageSource.gallery,
+  );
 
-      // 👉 선택한 이미지 File로 변환 후 저장
-        photoMap[key]!.add(File(image.path));
-      });
-  }
+  if (image == null) return;
+
+  setState(() {
+    album.images.add(image.path);
+  });
 }
+
+
+
 void showPhotoOptions(DateTime day) {
     // Show photo options for the selected day
   showModalBottomSheet(
     context: context,
     builder: (context) {
+      
       return SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(15, 20, 0, 0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             ListTile(
               leading: Icon(Icons.add_a_photo),
               title: Text('사진 추가'),
@@ -69,26 +123,17 @@ void showPhotoOptions(DateTime day) {
                 pickImage(day);
               },
             ),
-            ListTile(
-              leading: Icon(Icons.close),
-              title: Text('사진 삭제'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() {
-                  photoMap[normalizeDate(day)] = [];
-                });
-              },
-            )
           ],
+        )
         )
         );
     }
     );
 }
 
-Widget BuildImage(File file) {
+Widget BuildImage(String path) {
   return Image.file(
-    file,
+    File(path),
     fit: BoxFit.cover,
     width: double.infinity,
     height: double.infinity,
@@ -96,51 +141,51 @@ Widget BuildImage(File file) {
 }
 
 Widget buildCell(DateTime day, bool hasImage, bool isToday) {
-  final photos = getPhotos(day);
+  final Albums = getAlbums(day);
   return Container(
     margin: EdgeInsets.zero,
     //사진정렬
     child: Stack(
       children: [
-        if (photos.length == 1)
-          BuildImage(photos[0]),
-        if (photos.length == 2)
+        if (Albums.isNotEmpty)
+          BuildImage(Albums[0].images[0]),
+        if (Albums.length == 2)
           Column(
             children: [
               Expanded(
                 child: 
-                BuildImage(photos[0])
+                BuildImage(Albums[0].images[0])
               ),
               Expanded(
                 child: 
-                BuildImage(photos[1])
+                BuildImage(Albums[1].images[0])
               ),
             ],
           ),
-        if (photos.length == 3)
+        if (Albums.length == 3)
           Column(
             children: [
               Expanded(
                 child: 
-                BuildImage(photos[0])
+                BuildImage(Albums[0].images[0])
               ),
               Expanded(
                 child: Row(
                   children: [
                     Expanded(
                       child: 
-                      BuildImage(photos[1])
+                      BuildImage(Albums[1].images[0])
                     ),
                     Expanded(
                       child: 
-                      BuildImage(photos[2])
+                      BuildImage(Albums[2].images[0])
                     ),
                   ],
                 ),
               ),
             ],
           ),
-        if (photos.length >= 4)
+        if (Albums.length >= 4)
           Column(
             children: [
               Expanded(
@@ -148,11 +193,11 @@ Widget buildCell(DateTime day, bool hasImage, bool isToday) {
                   children: [
                     Expanded(
                       child: 
-                      BuildImage(photos[0])
+                      BuildImage(Albums[0].images[0])
                     ),
                     Expanded(
                       child: 
-                      BuildImage(photos[1])
+                      BuildImage(Albums[1].images[0])
                     ),
                   ],
                 ),
@@ -162,10 +207,10 @@ Widget buildCell(DateTime day, bool hasImage, bool isToday) {
                   children: [
                     Expanded(
                       child: 
-                      BuildImage(photos[2])
+                      BuildImage(Albums[2].images[0])
                     ),
                     Expanded(
-                      child: BuildImage(photos[3])
+                      child: BuildImage(Albums[3].images[0])
                     ),
                   ],
                 ),
@@ -186,7 +231,7 @@ Widget buildCell(DateTime day, bool hasImage, bool isToday) {
 
         Center(
           child:Visibility(
-            visible: !hasImage,
+            visible: hasImage==false,
               child: Text(
             '${day.day}',
             style: TextStyle(
@@ -207,8 +252,16 @@ Widget buildCell(DateTime day, bool hasImage, bool isToday) {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        title: Text('Caledar')
-        ),
+        title: Text('Caledar'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: () {
+              pickImage(selectedDay);
+            },
+          ),
+        ],
+      ),  
       body: TableCalendar(
         locale: 'ko_KR',
         firstDay: DateTime.utc(2023,05,30),
@@ -230,25 +283,36 @@ Widget buildCell(DateTime day, bool hasImage, bool isToday) {
             this.focusedDay = focusedDay;
           });
 
-          final photo = getPhotos(selectedDay);
+          final albums = getAlbums(selectedDay);
 
-          if (photo.isEmpty) {
+            
+          if (albums.isEmpty) {
              showPhotoOptions(selectedDay);
           }
-          
-
-          if (hasPhoto(selectedDay)) {
+          else if (albums.length == 1) {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => PhotoViewPage(photos: getPhotos(selectedDay),
-
-                onAddPhoto: () {
-                  pickImage(selectedDay);})
+                builder: (context) => PhotoViewPage(
+                  album: albums[0],
+                   onAddPhoto: () {
+                    addImageToAlbum(albums[0]);
+                   }, // 👉 여기 연결
+                ),
+              ),
+            ).then((_){
+              setState(() {}); // 앨범 페이지에서 돌아올 때 상태 갱신
+            });
+          }
+          else {
+           Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AlbumListPage(albums: albums),
               ),
             );
-          }
-        },
+          };
+          },
 
         
         selectedDayPredicate: (DateTime day) {
